@@ -1,0 +1,112 @@
+# train and test configuration file.
+task_name: face_detection_ssd
+net:
+  input_shape: [3, 300, 300]
+  backbone:
+    name: feature_net
+    arch: core.models.backbone.SSD.build_ssd
+    kwargs:
+      phase: train
+      size: 300
+      num_classes: 2  # face/background
+      use_bn: false
+  head:
+    loss_only_head:
+      arch: core.models.head.LossOnlyHead.LossOnlyHead
+      kwargs:
+        in_channels: 4
+      alpha: 1.0
+      loss:
+        name: loc_conf
+        arch: core.models.loss.multibox_loss.MultiBoxLoss
+        kwargs:
+          overlap_thresh: 0.5
+          prior_for_matching: true
+          bkg_label: 0
+          neg_mining: true
+          neg_pos: 3
+          neg_overlap: 0.5
+          encode_target: False
+          use_gpu: true
+  net_cfg: # customed network config, 这个参数会传给backbone、head、loss
+    num_classes: 2
+    feature_maps: [38, 19, 10, 5, 3, 1]
+    min_dim: 300
+    steps: [8, 16, 32, 64, 100, 300]
+    min_sizes: [30, 60, 111, 162, 213, 264]
+    max_sizes: [60, 111, 162, 213, 264, 315]
+    aspect_ratios: [[2], [2, 3], [2, 3], [2, 3], [2], [2]]
+    variance: [0.1, 0.2]
+    clip: True
+    name: widerface
+    init_method: kaiming  # [kaiming, xavier]
+
+recorder:
+  work_dir: /home/lidong/trainTask/objectDet/widerface_ssd
+  logger_path: logger.txt # ${work_dir} +
+  summary_writer_dir: tensorboard   # ${work_dir}
+  batch_log_frequency: 5
+  checkpoint_frequency: 5
+  checkpoint_dir: checkpoint
+
+strategy:
+  optimizer:
+    type: adam
+    lr: 0.001
+    momentum: 0.9
+    weight_decay: 0.0
+  lr_scheduler:
+    warmup: 3 # number of epoch to warmup.
+    type: step
+    step_size: 30
+    gamma: 0.5
+  epoch: 300
+
+train:
+  batchsize: 16  # single GPU
+  workers: 4
+  datasets:
+    wider_face_train:
+      data_fmt: widerface  # implement custom Dataset class.
+      data_path: /home/lidong/data/WiderFace/WIDER_train/images  # data root path.
+      data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_train_bbx_gt.txt  # use relative path from data_path.
+      kwargs: {}
+
+    # wider_face_val:
+    #   data_fmt: widerface  # implement custom Dataset class.
+    #   data_path: /home/lidong/data/WiderFace/WIDER_val/images
+    #   data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
+    #   kwargs: {}
+    # wider_face_val2:
+    #   data_fmt: widerface  # implement custom Dataset class.
+    #   data_path: /home/lidong/data/WiderFace/WIDER_val/images
+    #   data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
+    #   kwargs: {}
+  collater:
+    arch: core.datasets.collater.DefaultCollater
+    kwargs: {}
+  transforms:
+    pipeline: core.datasets.augmentation.face_detection.build_transform
+    kwargs:
+      width: 300
+      height: 300
+      is_train: true
+
+test:
+  batchsize: 1
+  workers: 4
+  datasets:
+    wider_face_val:
+      data_fmt: widerface  # implement custom Dataset class.
+      data_path: /home/lidong/data/WiderFace/WIDER_val/images
+      data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
+      kwargs: {}
+  collater:
+    arch: core.datasets.collater.DefaultCollater
+    kwargs: {}
+  transforms:
+    pipeline: core.datasets.augmentation.face_detection.build_transform
+    kwargs:
+      width: 300
+      height: 300
+      is_train: false

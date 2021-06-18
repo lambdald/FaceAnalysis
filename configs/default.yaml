@@ -1,0 +1,47 @@
+# train and test configuration file.
+task_name: test_minst
+net:
+  input_shape: [1, 28, 28]
+  backbone:
+    name: feature_net
+    arch: core.models.backbone.MobileNetV3.mobilenetv3_small
+    kwargs:
+      out_channels: 512
+  head:
+    # 支持多分支输出, 最终loss按照alpha加权求和
+    classisfy_minst:
+      arch: core.models.head.classify.ClassifyHeader
+      kwargs:
+        # CrossEntropyLoss L1 L2
+        num_classes: 10
+      loss:
+        name: cls_loss
+        arch: torch.nn.CrossEntropyLoss
+        kwargs: {}
+      alpha: 1.0
+
+recorder:
+  logger_path: 
+  summary_writer_path: 
+  loss_name: 
+  logger_batch_fmt: 
+  logger_epoch_fmt:
+  logger_epoch_time_fmt: 
+  
+strategy:
+  lr: 0.001
+  lr_scheduler: step
+  lr_step_size: 20
+  lr_step_gamma: 0.1
+  optimizer: SGD
+  momentum: 0.8
+  weight_decay: 0.000001
+
+train:
+  augment: None
+  data_loader:
+    name: None
+    class: 
+    data: minst
+  batchsize: 256
+  workers: 1
