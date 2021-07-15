@@ -2,15 +2,7 @@
 Author: lidong
 Date: 2021-06-07 16:37:21
 LastEditors: lidong
-LastEditTime: 2021-06-07 16:38:39
-Description: file content
-'''
-
-'''
-Author: lidong
-Date: 2021-06-04 17:13:18
-LastEditors: lidong
-LastEditTime: 2021-06-07 15:34:23
+LastEditTime: 2021-07-02 15:54:18
 Description: file content
 '''
 import torch
@@ -18,7 +10,7 @@ from torch.autograd import Function
 from core.models.layers.box_utils import decode, nms
 
 
-class Detect(Function):
+class Detect():
     """At test time, Detect is the final layer of SSD.  Decode location preds,
     apply non-maximum suppression to location predictions based on conf
     scores and threshold to a top_k number of output predictions for both
@@ -35,7 +27,10 @@ class Detect(Function):
         self.conf_thresh = conf_thresh
         self.variance = kwargs['net_cfg']['variance']
 
-    def forward(self, loc_data, conf_data, prior_data):
+    def __call__(self, loc_data, conf_data, prior_data):
+        return self.forward(loc_data, conf_data, prior_data)
+
+    def forward(self, loc_data:torch.Tensor, conf_data, prior_data):
         """
         Args:
             loc_data: (tensor) Loc preds from loc layers    #! location
@@ -45,9 +40,12 @@ class Detect(Function):
             prior_data: (tensor) Prior boxes and variances from priorbox layers #! prior-box
                 Shape: [1,num_priors,4]
         """
+        loc_data = loc_data.cpu()
+        conf_data = conf_data.cpu()
+        prior_data = prior_data.cpu()
         num = loc_data.size(0)  # batch size
         num_priors = prior_data.size(0)
-        output = torch.zeros(num, self.num_classes, self.top_k, 5)
+        output = torch.zeros(num, self.num_classes, self.top_k, 5)  # [b, n_class, top_k, score + bbox]
         conf_preds = conf_data.view(num, num_priors,
                                     self.num_classes).transpose(2, 1)
 
@@ -57,7 +55,7 @@ class Detect(Function):
             # For each class, perform nms
             conf_scores = conf_preds[i].clone()
 
-            for cl in range(1, self.num_classes):
+            for cl in range(0, self.num_classes-1): # 最后一个是背景
                 c_mask = conf_scores[cl].gt(self.conf_thresh)
                 scores = conf_scores[cl][c_mask]
                 if scores.size(0) == 0:

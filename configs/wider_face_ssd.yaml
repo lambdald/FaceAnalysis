@@ -42,11 +42,11 @@ net:
     init_method: kaiming  # [kaiming, xavier]
 
 recorder:
-  work_dir: /home/lidong/trainTask/objectDet/widerface_ssd
+  work_dir: /home/lidong/trainTask/facedet/widerface_ssd
   logger_path: logger.txt # ${work_dir} +
-  summary_writer_dir: tensorboard   # ${work_dir}
-  batch_log_frequency: 5
-  checkpoint_frequency: 5
+  summary_writer_dir: tensorboard   # ${work_dir} +
+  batch_log_frequency: 20
+  checkpoint_frequency: 10
   checkpoint_dir: checkpoint
 
 strategy:
@@ -58,9 +58,12 @@ strategy:
   lr_scheduler:
     warmup: 3 # number of epoch to warmup.
     type: step
-    step_size: 30
-    gamma: 0.5
+    step_size: 50
+    gamma: 0.8
+    iter: 50
   epoch: 300
+  use_amp: True # 自动混合精度训练
+  eval: True
 
 train:
   batchsize: 16  # single GPU
@@ -68,20 +71,12 @@ train:
   datasets:
     wider_face_train:
       data_fmt: widerface  # implement custom Dataset class.
+      dataset_arch: core.datasets.dataset.facedet.FaceDet # 数据加载
+      processor_arch: core.datasets.processor.det_bbox.DetBbox  # 预处理
       data_path: /home/lidong/data/WiderFace/WIDER_train/images  # data root path.
-      data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_train_bbx_gt.txt  # use relative path from data_path.
+      data_annot: /home/lidong/data/WiderFace/wider_face_train_annot_coco_style.json  # use relative path from data_path.
       kwargs: {}
 
-    # wider_face_val:
-    #   data_fmt: widerface  # implement custom Dataset class.
-    #   data_path: /home/lidong/data/WiderFace/WIDER_val/images
-    #   data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
-    #   kwargs: {}
-    # wider_face_val2:
-    #   data_fmt: widerface  # implement custom Dataset class.
-    #   data_path: /home/lidong/data/WiderFace/WIDER_val/images
-    #   data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
-    #   kwargs: {}
   collater:
     arch: core.datasets.collater.DefaultCollater
     kwargs: {}
@@ -93,13 +88,15 @@ train:
       is_train: true
 
 test:
-  batchsize: 1
-  workers: 4
+  batchsize: 64
+  workers: 8
   datasets:
     wider_face_val:
       data_fmt: widerface  # implement custom Dataset class.
-      data_path: /home/lidong/data/WiderFace/WIDER_val/images
-      data_annot: /home/lidong/data/WiderFace/wider_face_split/wider_face_val_bbx_gt.txt
+      dataset_arch: core.datasets.dataset.facedet.FaceDet # 数据加载
+      processor_arch: core.datasets.processor.det_bbox.DetBbox  # 预处理
+      data_path: /home/lidong/data/WiderFace/WIDER_val/images  # data root path.
+      data_annot: /home/lidong/data/WiderFace/wider_face_val_annot_coco_style.json  # use relative path from data_path.
       kwargs: {}
   collater:
     arch: core.datasets.collater.DefaultCollater

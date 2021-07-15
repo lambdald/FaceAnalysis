@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-04-30 14:52:40
 LastEditors: lidong
-LastEditTime: 2021-06-07 20:06:26
+LastEditTime: 2021-07-05 13:48:26
 Description: file content
 '''
 import torch
@@ -13,13 +13,18 @@ class BaseHead(nn.Module):
         super().__init__()
         self.in_channels = 0
         self.out_dim = 0
+        self.kwargs = kwargs
 
     def get_output_shape(self):
         assert self.in_channels != 0
         # tmp_input = {'images': torch.rand(torch.Size(self.input_shape)).unsqueeze(0)}
         feature = torch.rand((10, self.in_channels, 5, 5))
         target = torch.randint(0, 9, (10,))
-        tmp_input = {'feature': feature, 'target': target}
+        tmp_input = {
+            'feature': feature,
+            'target': target,
+            'head':{},
+            'is_train': False}
         # pdb.set_trace()
         tmp_output = self.forward(tmp_input)
         return tmp_output

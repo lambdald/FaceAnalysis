@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-06-04 14:33:22
 LastEditors: lidong
-LastEditTime: 2021-06-11 13:25:26
+LastEditTime: 2021-07-02 09:45:56
 Description: file content
 '''
 
@@ -85,8 +85,9 @@ class WiderFaceDataset(BaseDataset):
 
         self.data = parse_widerface_annot_file(data_path, data_annot)
         self.keys = list(self.data.keys())
+        self.kwargs = kwargs
         
-    def __getitem__(self, index) -> list:
+    def __getitem__(self, index) -> tuple:
         img, bboxes = self.pull_item(index)
         return (img, bboxes)
 
@@ -102,8 +103,20 @@ class WiderFaceDataset(BaseDataset):
             img = transformed['image']
             bboxes = transformed['bboxes']
         h, w = img.shape[:2]
-        bboxes = [(b[0]/w, b[1]/h, b[2]/w, b[3]/h, b[4]) for b in bboxes]
+        # bboxes = [(b[0]/w, b[1]/h, b[2]/w, b[3]/h, b[4]) for b in bboxes]
         return self.to_chw(img), bboxes
         
     def __len__(self) -> int:
         return len(self.keys)
+        
+class WiderFaceHeatmapDataset(WiderFaceDataset):
+
+    def __init__(self, data_path, data_annot, transforms, **kwargs) -> None:
+        super().__init__(data_path, data_annot, transforms=transforms, **kwargs)
+
+    def __getitem__(self, index) -> tuple:
+        img, bboxes = self.pull_item(index)
+        return (img, bboxes)
+
+    def draw_heatmap(self):
+        pass

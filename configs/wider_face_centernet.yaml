@@ -1,0 +1,121 @@
+# train and test configuration file.
+task_name: face_detection_centernet
+net:
+  input_shape: [3, 512, 512]
+  backbone:
+    name: feature_net
+    arch: core.models.backbone.centerface_mobilenetv2_fpn.get_mobile_net
+    kwargs:
+      num_layers: 10
+      head_conv: 24
+
+  head:
+    hm:
+      arch: core.models.head.ConvHead.ConvHead
+      kwargs:
+        in_channels: 24
+        out_channels: 1
+        use_act: true
+      alpha: 1.0
+      loss:
+        name: hm
+        arch: core.models.loss.losses.FocalLoss
+        kwargs: {}
+    offset:
+      arch: core.models.head.ConvHead.ConvHead
+      kwargs:
+        in_channels: 24
+        out_channels: 2
+        use_act: false
+      alpha: 0.5
+      loss:
+        name: offset
+        arch: core.models.loss.losses.FullRegL1Loss
+        kwargs: {}
+    wh:
+      arch: core.models.head.ConvHead.ConvHead
+      kwargs:
+        in_channels: 24
+        out_channels: 2
+        use_act: false
+      alpha: 0.5
+      loss:
+        name: wh
+        arch: core.models.loss.losses.FullRegL1Loss
+        kwargs: {}
+  net_cfg: # customed network config, 这个参数会传给backbone、head、loss
+    num_classes: 1
+    name: widerface
+    init_method: kaiming  # [kaiming, xavier]
+
+recorder:
+  work_dir: /home/lidong/trainTask/facedet/widerface_centernet
+  logger_path: logger.txt # ${work_dir} +
+  summary_writer_dir: tensorboard   # ${work_dir} +
+  batch_log_frequency: 20
+  checkpoint_frequency: 10
+  checkpoint_dir: checkpoint
+
+strategy:
+  optimizer:
+    type: adam
+    lr: 0.0001
+    momentum: 0.9
+    weight_decay: 0.0
+  lr_scheduler:
+    warmup: 3 # number of epoch to warmup.
+    type: step
+    step_size: 50
+    gamma: 0.5
+    iter: 50
+  epoch: 300
+  use_amp: False # 自动混合精度训练
+  eval: True
+
+train:
+  batchsize: 32  # single GPU
+  workers: 4
+  datasets:
+    wider_face_train:
+      data_fmt: widerface  # implement custom Dataset class.
+      dataset_arch: core.datasets.dataset.facedet.FaceDet # 数据加载
+      processor_arch: core.datasets.processor.det_heatmap.DetHeatmap  # 预处理
+      data_path: /home/lidong/data/WiderFace/WIDER_train/images  # data root path.
+      data_annot: /home/lidong/data/WiderFace/wider_face_train_annot_coco_style.json  # use relative path from data_path.
+      kwargs:
+        num_classes: 1
+        num_downsample: 4
+
+  collater:
+    arch: core.datasets.collater.DictCollater
+    kwargs: {}
+  transforms:
+    pipeline: core.datasets.augmentation.face_detection.build_transform
+    kwargs:
+      width: 512
+      height: 512
+      is_train: true
+
+test:
+  batchsize: 64
+  workers: 8
+  datasets:
+    wider_face_val:
+      data_fmt: widerface  # implement custom Dataset class.
+      dataset_arch: core.datasets.dataset.facedet.FaceDet # 数据加载
+      processor_arch: core.datasets.processor.det_heatmap.DetHeatmap  # 预处理
+      data_path: /home/lidong/data/WiderFace/WIDER_val/images  # data root path.
+      data_annot: /home/lidong/data/WiderFace/wider_face_val_annot_coco_style.json  # use relative path from data_path.
+      kwargs:
+        num_classes: 1
+        num_downsample: 4
+
+  collater:
+    arch: core.datasets.collater.DictCollater
+    kwargs: {}
+  transforms:
+    pipeline: core.datasets.augmentation.face_detection.build_transform
+    kwargs:
+      width: 512
+      height: 512
+      is_train: false

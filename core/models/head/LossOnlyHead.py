@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-06-07 20:06:45
 LastEditors: lidong
-LastEditTime: 2021-06-17 10:30:09
+LastEditTime: 2021-06-23 10:45:00
 Description: file content
 '''
 
@@ -22,6 +22,7 @@ class LossOnlyHead(BaseHead):
         return {self.kwargs['name']: {'output':None}}   # 暂时无法得知输出的类型和shape
 
     def forward(self, input):
+        # 此head不做额外计算，output来自backbone。
         # backbone需要把feature和output存到字典里
         x = input['output']
         
@@ -29,6 +30,9 @@ class LossOnlyHead(BaseHead):
         input['head'][self.kwargs['name']] = {
             'output': x,
         }
+
+        if not input.get('calc_loss', True):
+            return input
 
         if self.kwargs['isTrain']:
             loss = self.kwargs['criterion'](x, input['target'])

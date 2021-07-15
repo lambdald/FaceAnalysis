@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-06-08 09:24:18
 LastEditors: lidong
-LastEditTime: 2021-06-11 13:26:52
+LastEditTime: 2021-07-02 13:26:25
 Description: file content
 '''
 
@@ -128,5 +128,4 @@ class MultiBoxLoss(nn.Module):
         N = num_pos.data.sum()
         loss_l /= N
         loss_c /= N
-
         return loss_l, loss_c

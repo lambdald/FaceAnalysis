@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-04-30 13:30:10
 LastEditors: lidong
-LastEditTime: 2021-06-11 16:55:05
+LastEditTime: 2021-07-05 13:55:26
 Description: file content
 '''
 import torch
@@ -13,16 +13,23 @@ from torchvision import transforms
 from core.datasets.base_dataset import FullDatasets
 from core.datasets import widerface
 
-from core.utils.build_from_arch import build_from_arch
+from core.utils.build_from_arch import build_from_arch, find_object_by_arch
 def build_datasets(cfg):
-    
     if cfg['data_fmt'] == 'widerface':
         dataset = widerface.WiderFaceDataset(cfg['data_path'], cfg['data_annot'] , **cfg['kwargs'])
-
     else:
         raise NotImplementedError('unknown data_fmt:', cfg['data_fmt'])
-
     return dataset
+
+
+def build_processed_dataset(cfg):
+    dataset_cls = find_object_by_arch(cfg['dataset_arch'])
+    processor_cls = find_object_by_arch(cfg['processor_arch'])
+
+    class ProcessedDataset(dataset_cls, processor_cls):
+        def __init__(self, data_path, data_annot, kwargs) -> None:
+            super(ProcessedDataset, self).__init__(data_path, data_annot, kwargs)
+    return ProcessedDataset(cfg['data_path'], cfg['data_annot'] , cfg['kwargs'])
 
 def impl_build_dataloader(cfg_train, is_train=False):
 
@@ -31,7 +38,8 @@ def impl_build_dataloader(cfg_train, is_train=False):
     
     for data_name, data_cfg in cfg_train['datasets'].items():
         data_cfg['kwargs']['transforms'] = transforms
-        data = build_datasets(data_cfg)
+        data = build_processed_dataset(data_cfg)
+        # data = build_datasets(data_cfg)
         datasets.append(data)
 
     full_datasets = FullDatasets(datasets)

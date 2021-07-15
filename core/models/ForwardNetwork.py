@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-04-30 14:57:28
 LastEditors: lidong
-LastEditTime: 2021-06-17 16:15:16
+LastEditTime: 2021-07-06 16:11:43
 Description: file content
 '''
 import torch
@@ -25,7 +25,7 @@ class ForwardNetwork(nn.Module):
         cfg_backbone['kwargs']['net_cfg']= cfg_net['net_cfg']
         cfg_backbone['kwargs']['input_shape'] = intput_shape
         net.backbone = build_from_arch(cfg_backbone['arch'], cfg_backbone['kwargs'])
-
+        net.backbone.init_params()
         out_feature_shape = net.backbone.get_output_shape()
         print('backbone output:', out_feature_shape)
 
@@ -49,9 +49,10 @@ class ForwardNetwork(nn.Module):
             })
             head['kwargs']['isTrain'] = cfg['isTrain']
             net.heads.append(build_from_arch(head['arch'], head['kwargs']))
+            net.heads[-1].init_params()
             setattr(net, name, net.heads[-1])
 
-            out = net.heads[-1].get_output_shape()[name]['output']
+            out = net.heads[-1].get_output_shape()['head'][name]['output']
             if hasattr(out, 'shape'):
                 print(f'head {name} output:', out.shape[1:])
             else:
@@ -59,12 +60,16 @@ class ForwardNetwork(nn.Module):
         return net
 
 
-    def forward(self, input):
+    def forward(self, input: dict):
         input = self.backbone(input)
+
         input['head'] = {}
         for hid, head in enumerate(self.heads):
             input = head(input)
         
+        if not input.get('is_train', True):
+            return input
+
         loss = []
         loss_with_name = {}
         for name, head in self.cfg['net']['head'].items():
@@ -76,7 +81,6 @@ class ForwardNetwork(nn.Module):
         input['loss'] = {}
         input['loss']['named_loss'] = loss_with_name
         input['loss']['sum'] = sum(loss)
-
         return input
 
     def init_params(self):

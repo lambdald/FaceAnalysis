@@ -2,7 +2,7 @@
 Author: lidong
 Date: 2021-06-04 17:36:19
 LastEditors: lidong
-LastEditTime: 2021-06-10 10:28:36
+LastEditTime: 2021-06-24 10:18:57
 Description: file content
 '''
 
@@ -54,11 +54,10 @@ class SSD(BaseBackbone):
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
 
-        if phase == 'test':
-            self.softmax = nn.Softmax(dim=-1)
-            self.detect = Detect(num_classes, 0, 200, 0.01, 0.45, **kwargs)
+        self.softmax = nn.Softmax(dim=-1)
+        self.detect = Detect(num_classes, 0, 200, 0.01, 0.45, **kwargs)
 
-    def forward(self, inputs):
+    def forward(self, inputs:dict):
         """Applies network layers and ops on input image(s) x.
 
         Args:
@@ -111,22 +110,22 @@ class SSD(BaseBackbone):
 
         inputs['feature'] = loc
 
-        if self.phase == "test":
-            output = self.detect(
+        output = (
+            loc.view(loc.size(0), -1, 4),
+            conf.view(conf.size(0), -1, self.num_classes),
+            self.priors
+        )
+
+        if not inputs.get('is_train', True):
+            detected_bbox = self.detect(
                 loc.view(loc.size(0), -1, 4),                   # loc preds
                 self.softmax(conf.view(conf.size(0), -1,
                              self.num_classes)),                # conf preds
                 self.priors.type(type(x.data))                  # default boxes
             )
-        else:
-            output = (
-                loc.view(loc.size(0), -1, 4),
-                conf.view(conf.size(0), -1, self.num_classes),
-                self.priors
-            )
+            inputs['eval'] = {'bbox': detected_bbox}
 
         inputs['output'] = output
-
         return inputs
 
     def load_weights(self, base_file):
